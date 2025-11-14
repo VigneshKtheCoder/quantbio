@@ -3,6 +3,7 @@ import { MetricsGrid } from '@/components/MetricsGrid';
 import { PhaseProgress } from '@/components/PhaseProgress';
 import { ValidationStatus } from '@/components/ValidationStatus';
 import { DatasetOverview } from '@/components/DatasetOverview';
+import { QuantumSimulator } from '@/components/QuantumSimulator';
 import { Activity, Dna } from 'lucide-react';
 
 const Index = () => {
@@ -57,6 +58,11 @@ const Index = () => {
         {/* ENAQT Chart */}
         <section>
           <ENAQTChart />
+        </section>
+
+        {/* Interactive Quantum Simulator */}
+        <section>
+          <QuantumSimulator />
         </section>
 
         {/* Two Column Layout */}
