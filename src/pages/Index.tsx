@@ -39,13 +39,13 @@ const Index = () => {
             <span className="text-sm font-medium text-primary">Scientific Validation Framework</span>
           </div>
           <h2 className="text-4xl md:text-5xl font-bold text-foreground leading-tight">
-            Quantum-Metabolic Network Analysis
-            <br />
-            <span className="text-primary">for Disease Biomarker Discovery</span>
+            Quantum Bioenergetic Diagnostics
           </h2>
-          <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            Mapping omics data to quantum transport dynamics in mitochondrial electron transport chains.
-            Disease perturbs short-range quantum channels, flattening ENAQT peaks and reducing energy transfer efficiency.
+          <p className="text-xl font-semibold text-primary mt-4">
+            The first physics based platform for early disease detection.
+          </p>
+          <p className="text-lg text-muted-foreground max-w-3xl mx-auto mt-4">
+            Patient omics are transformed into quantum level simulations of mitochondrial energy flow, revealing early breakdowns in coherence and transport efficiency physics based biomarkers that emerge long before genetic or clinical signals.
           </p>
         </section>
 
