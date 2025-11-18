@@ -1,74 +1,70 @@
+# qemd/mapping.py
 import numpy as np
-from sklearn.preprocessing import minmax_scale
+from .config import (
+    GAMMA_MIN, GAMMA_MAX, GAMMA_MID,
+    EPS_ALPHA, J_BASE, J_BETA, GAMMA_LAM,
+    J_MIN_CLIP, J_MAX_CLIP
+)
 
-# --- Static Fusion Parameters (for a first pass without training) ---
-# These weights are heuristic: Higher ETE, tau_c, Resilience = GOOD
-# Higher gamma* (more decoherence needed) = BAD (implies structural defect)
-W1_ETE = 1.0
-W2_TAU_C = 1.0
-W3_GAMMA_STAR = -1.0 # Note the negative sign: high gamma* reduces score
-W4_RESILIENCE = 0.5
-BIAS = 0.0 # Bias term
+def map_expression_to_epsilon(expr_vec_z, eps0=0.0):
+    """
+    Maps mean z-scored gene expression to site energy (epsilon).
+    epsilon = eps0 + EPS_ALPHA * z_mean
+    """
+    z = float(np.mean(expr_vec_z))
+    epsilon = eps0 + EPS_ALPHA * z
+    return float(epsilon)
 
-def normalize_metrics(cohort_metrics):
+def map_supercomplex_to_J(edge_expr_z):
     """
-    Performs Min-Max normalization for tau_c and gamma* across the entire cohort.
-    ETE_peak and Resilience are already in [0,1].
+    Maps mean z-score of an edge's subunits to coupling J.
+    J = J_BASE * (1 + J_BETA * z)
     """
-    if not cohort_metrics:
-        return []
-        
-    # Extract arrays
-    tau_c_values = np.array([m['tau_c'] for m in cohort_metrics])
-    gamma_star_values = np.array([m['gamma_star'] for m in cohort_metrics])
+    z = float(edge_expr_z)
+    J = J_BASE * (1.0 + J_BETA * z)
+    return float(np.clip(J, J_MIN_CLIP, J_MAX_CLIP))
 
-    # Normalize
-    # Clip to [0,1] using minmax_scale
-    tau_c_norm = minmax_scale(tau_c_values, feature_range=(0, 1))
-    gamma_star_norm = minmax_scale(gamma_star_values, feature_range=(0, 1))
-    
-    # Re-package the results
-    normalized_metrics = []
-    for i, m in enumerate(cohort_metrics):
-        normalized_metrics.append({
-            'sample_id': m['sample_id'],
-            'ETE_peak': m['ETE_peak'],
-            'tau_c_norm': tau_c_norm[i],
-            'gamma_star_norm': gamma_star_norm[i],
-            'resilience': m['resilience']
-        })
-        
-    return normalized_metrics
+def map_redox_to_gamma(redox_z):
+    """
+    Maps redox/hypoxia/ROS z-score to decoherence rate gamma.
+    """
+    z = float(redox_z)
+    gamma = GAMMA_MID * (1.0 + GAMMA_LAM * z)
+    return float(np.clip(gamma, GAMMA_MIN, GAMMA_MAX))
 
-def fuse_qhs(normalized_metrics):
+def get_params_for_sample(omics_data):
     """
-    Fuses the normalized physical metrics into a single Quantum Health Score (QHS)
-    using a logistic (sigmoid) function. This ensures the final score is in [0,1].
-    QHS = 1 / (1 + exp(-z)), where z is a weighted sum of metrics.
-    """
-    # Create the weighted sum (z-score for the sigmoid)
-    z = (W1_ETE * normalized_metrics['ETE_peak'] +
-         W2_TAU_C * normalized_metrics['tau_c_norm'] +
-         W3_GAMMA_STAR * normalized_metrics['gamma_star_norm'] +
-         W4_RESILIENCE * normalized_metrics['resilience'] +
-         BIAS)
-         
-    # Apply the sigmoid function to map z to [0, 1]
-    qhs = 1.0 / (1.0 + np.exp(-z))
-    return float(qhs)
+    Placeholder: build ε, J, γ from an omics sample.
 
-def compute_cohort_qhs(cohort_metrics):
+    Expected keys in omics_data (z-scores or arrays of z-scores):
+      - 'ci_z', 'ciii_z', 'civ_z'
+      - 'ci_ciii_z', 'ciii_civ_z'
+      - 'redox_z'
     """
-    End-to-end function for computing QHS for an entire cohort.
-    """
-    normalized_metrics = normalize_metrics(cohort_metrics)
-    
-    final_scores = []
-    for m in normalized_metrics:
-        qhs = fuse_qhs(m)
-        final_scores.append({
-            'sample_id': m['sample_id'],
-            'QHS': qhs
-        })
-        
-    return final_scores
+
+    epsilon = [
+        map_expression_to_epsilon(omics_data['ci_z']),
+        map_expression_to_epsilon(omics_data['ci_z']),
+        map_expression_to_epsilon(omics_data['ci_z']),
+        map_expression_to_epsilon(omics_data['ciii_z']),
+        map_expression_to_epsilon(omics_data['ciii_z']),
+        map_expression_to_epsilon(omics_data['ciii_z']),
+        map_expression_to_epsilon(omics_data['civ_z']),
+    ]
+
+    J = [
+        map_supercomplex_to_J(omics_data['ci_ciii_z']),   # J_01
+        map_supercomplex_to_J(omics_data['ci_ciii_z']),   # J_12
+        map_supercomplex_to_J(omics_data['ci_ciii_z']),   # J_23
+        map_supercomplex_to_J(omics_data['ciii_civ_z']),  # J_34
+        map_supercomplex_to_J(omics_data['ciii_civ_z']),  # J_45
+        map_supercomplex_to_J(omics_data['ciii_civ_z']),  # J_56
+    ]
+
+    gamma = map_redox_to_gamma(omics_data['redox_z'])
+
+    return {
+        "epsilon": epsilon,
+        "J": J,
+        "gamma": gamma,
+    }
